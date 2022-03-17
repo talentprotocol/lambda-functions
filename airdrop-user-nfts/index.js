@@ -20,6 +20,17 @@ exports.handler = async (event) => {
     );
 
     if (event.wallet_id.length > 0) {
+      const balance = await contract.balanceOf(event.wallet_id);
+
+      if (balance > 0) {
+        return {
+          statusCode: 400,
+          body: {
+            errorId: 2,
+            error: "User already has the NFT"
+          }
+        }
+      }
       const tx = await contract.connect(owner).airdrop([event.wallet_id]);
       const receipt = await tx.wait();
 
@@ -40,7 +51,7 @@ exports.handler = async (event) => {
     } else {
       return {
         statusCode: 400,
-        body: { error: "No wallet id provided" }
+        body: { errorId: 1, error: "No wallet id provided" }
       }
     }
   } catch (error) {
