@@ -23,11 +23,14 @@ exports.handler = async (event) => {
       const balance = await contract.balanceOf(event.wallet_id);
 
       if (balance > 0) {
+        const tokenId = contract.tokenOfOwnerByIndex(event.wallet_id, 0);
         return {
           statusCode: 400,
           body: {
             errorId: 2,
-            error: "User already has the NFT"
+            error: "User already has the NFT",
+            tokenId: tokenId.toString(),
+            tokenAddress: NFT_ADDRESS
           }
         }
       }
