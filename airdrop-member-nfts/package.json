@@ -11,7 +11,9 @@
   "license": "ISC",
   "dependencies": {
     "@celo-tools/celo-ethers-wrapper": "^0.1.0",
+    "axios": "^0.26.1",
     "ethers": "5.4.6",
+    "mime": "^3.0.0",
     "nft.storage": "^6.0.2"
   }
 }
