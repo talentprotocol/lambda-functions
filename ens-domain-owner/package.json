@@ -1,0 +1,15 @@
+{
+  "name": "ens-domain-owner",
+  "version": "1.0.0",
+  "description": "Retuns the owner of a ENS domain",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ethers": "^5.7.2"
+  }
+}
