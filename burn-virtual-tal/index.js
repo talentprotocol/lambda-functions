@@ -23,15 +23,11 @@ exports.handler = async (event) => {
 			provider
 		);
 
-    const tx = await contract.connect(owner).adminBurn(userAddress, amount, {
-      maxFeePerGas: feeData.maxFeePerGas?.mul(13).div(10),
-      maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.mul(13).div(10)
-    });
-    const receipt = await tx.wait();
+    const tx = await contract.connect(owner).adminBurn(userAddress, amount, {gasPrice: feeData.gasPrice});
 
     return {
       statusCode: 200,
-      body: { tx: receipt.transactionHash }
+      body: { tx: tx.hash }
     }
   } catch (error) {
     return {
