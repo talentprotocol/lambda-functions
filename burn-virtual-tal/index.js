@@ -23,13 +23,14 @@ exports.handler = async (event) => {
 			provider
 		);
 
-    const tx = await contract.connect(owner).adminBurn(userAddress, amount, {gasPrice: feeData.gasPrice});
+    const tx = await contract.connect(owner).adminBurn(userAddress, ethers.utils.parseUnits(amount), {gasPrice: feeData.gasPrice});
 
     return {
       statusCode: 200,
       body: { tx: tx.hash }
     }
   } catch (error) {
+    console.error(error);
     return {
       statusCode: 500,
       body: { error: error}
