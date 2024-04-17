@@ -1,13 +1,14 @@
 import passportContract from "./PassportABI.json" with { type: "json" };
 
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { createPublicClient, http, encodeFunctionData } from "viem";
-import { baseSepolia } from "viem/chains";
+import { createPublicClient, http, getContract } from "viem";
+import { baseSepolia, base } from "viem/chains";
 import { createSmartAccountClient } from "permissionless";
 import { privateKeyToSimpleSmartAccount } from "permissionless/accounts";
 import { createPimlicoPaymasterClient } from "permissionless/clients/pimlico";
 
 const ENTRYPOINT = "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789";
+const WALLET_PK = process.env.WALLET_PK;
 
 export const handler = async (event) => {
   try {
@@ -16,45 +17,41 @@ export const handler = async (event) => {
     const bundlerUrl = event.bundler_url;
     const passportRegistryAddress = event.passport_registry_address;
     const source = event.source;
-    let privateKey = event.private_key;
+    const environment = event.environment;
+    const passportId = event.passport_id;
+    let chain = baseSepolia;
+    const privateKey = event.private_key;
 
-    if(!privateKey) {
-      privateKey = generatePrivateKey();
-    }
-		const eoaAccount = privateKeyToAccount(privateKey);
+    if(environment == "mainnet") {
+      chain = base;
+    } 
 
-    const eoaWallet = {
-      private_key: privateKey,
-      public_address: eoaAccount.address,
-      wallet_type: "externally_owned_account"
-    }
-
-		const publicClient = createPublicClient({
+    const publicClient = createPublicClient({
 			transport: http(jsonRpcUrl),
 		});
 
-		const smartAccount = await privateKeyToSimpleSmartAccount(publicClient, {
-			privateKey,
+    console.log("Initialize adminSmartAccount");
+
+    const adminSmartAccount = await privateKeyToSimpleSmartAccount(publicClient, {
+			privateKey: WALLET_PK,
 			entryPoint: ENTRYPOINT, // global entrypoint
 			factoryAddress: "0x9406Cc6185a346906296840746125a0E44976454",
 		});
 
-    const scaWallet = {
-      public_address: smartAccount.address,
-      wallet_type: "smart_contract_account"
-    }
+    console.log("Initialize paymasterClient");
 
     const paymasterClient = createPimlicoPaymasterClient({
       transport: http(paymasterUrl),
       entryPoint: ENTRYPOINT,
-      chain: baseSepolia,
+      chain,
     });
+    
+    console.log("Initialize adminSmartAccountClient");
 
-    console.log("paymasterClient");
-
-    const smartAccountClient = createSmartAccountClient({
-      account: smartAccount,
-      chain: baseSepolia,
+    const adminSmartAccountClient = createSmartAccountClient({
+      account: adminSmartAccount,
+      entryPoint: ENTRYPOINT,
+      chain,
       bundlerTransport: http(bundlerUrl),
       // IMPORTANT: Set up the Cloud Paymaster to sponsor your transaction
       middleware: {
@@ -62,34 +59,52 @@ export const handler = async (event) => {
       },
     });
 
-    console.log("smartAccountClient", smartAccountClient.account);
+    console.log("Generate passport wallets");
+    
+    if(!privateKey) {
+      privateKey = generatePrivateKey();
+    }
+    const eoaAccount = privateKeyToAccount(privateKey);
 
-    const callData = encodeFunctionData({
+    const eoaWallet = {
+      private_key: privateKey,
+      public_address: eoaAccount.address,
+      wallet_type: "externally_owned_account"
+    }
+
+		const generatedSmartAccount = await privateKeyToSimpleSmartAccount(publicClient, {
+			privateKey,
+			entryPoint: ENTRYPOINT, // global entrypoint
+			factoryAddress: "0x9406Cc6185a346906296840746125a0E44976454",
+		});
+
+    const scaWallet = {
+      public_address: generatedSmartAccount.address,
+      wallet_type: "smart_contract_account"
+    }
+
+    console.log("Initialize Passport registry");
+
+    const passportRegistry = getContract({
+      address: passportRegistryAddress,
       abi: passportContract.abi,
-      functionName: "create",
-      args: [source],
+      client: {
+        public: publicClient,
+        wallet: adminSmartAccountClient,
+      },
     });
 
-    console.log("Generated callData:", callData);
+    console.log(`Call admin create for generated wallet: ${generatedSmartAccount.address}`);
 
-    // Send the sponsored transaction!
-    const txHash = await smartAccountClient.sendTransaction({
-      account: smartAccountClient.account,
-      to: passportRegistryAddress,
-      data: callData,
-      value: BigInt(0),
-    });
+    const txHash = await passportRegistry.write.adminCreate([
+      source,
+      generatedSmartAccount.address,
+      passportId,
+    ]);
 
     console.log(
       `UserOperation included: https://sepolia.basescan.org/tx/${txHash}`,
     );
-
-    const passportId = await publicClient.readContract({
-      address: passportRegistryAddress,
-      abi: passportContract.abi,
-      functionName: "passportId",
-      args: [smartAccount.address],
-    });
 
     const transaction = await publicClient.waitForTransactionReceipt({
       hash: txHash,
@@ -108,7 +123,6 @@ export const handler = async (event) => {
       body: {
         tx_hash: txHash,
         tx_timestamp: blockTimestamp.toString(),
-        passport_id: passportId.toString(),
         eoa_wallet: eoaWallet,
         sca_wallet: scaWallet
       }

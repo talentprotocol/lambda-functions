@@ -7,11 +7,12 @@ import { handler } from './index.js';
 //In my example i'm using empty JSON
 
 const event = {
-  "json_rpc_url": "",
-  "paymaster_url": "",
-  "bundler_url": "",
-  "passport_registry_address": "0xC10C745a8103B5154c2F654660C1109Fa34E4825",
-  "source": "farcaster"
+  "json_rpc_url": "https://api.developer.coinbase.com/rpc/v1/base-sepolia/Ip9cOQPtBOm81rN2I9_1rBiMXOfKBxii",
+  "paymaster_url": "https://api.developer.coinbase.com/rpc/v1/base-sepolia/Ip9cOQPtBOm81rN2I9_1rBiMXOfKBxii",
+  "bundler_url": "https://api.developer.coinbase.com/rpc/v1/base-sepolia/Ip9cOQPtBOm81rN2I9_1rBiMXOfKBxii",
+  "passport_registry_address": "0x0fDD539a38B5ee3f077238e20d65177F3A5688Df",
+  "source": "farcaster",
+  "passport_id": 1003
 }
 handler(event, //event
     {}, //content
