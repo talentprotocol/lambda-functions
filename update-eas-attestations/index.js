@@ -8,27 +8,27 @@ const schemaUID =
 
 exports.handler = async (event) => {
   try {
-    if (event.wallet_id.length > 0) {
-      const signer = new Wallet(WALLET_PK);
-      const eas = new EAS(easContractAddress);
-      // Signer must be an ethers-like signer.
-      eas.connect(signer);
+    const signer = new Wallet(WALLET_PK);
+    const eas = new EAS(easContractAddress);
+    // Signer must be an ethers-like signer.
+    eas.connect(signer);
+    if (event.action === "create_attestations") {
       // Initialize SchemaEncoder with the schema string
       const schemaEncoder = new SchemaEncoder("bytes32 credential");
       const requests = [];
 
-      for (let i = 0; i < event.credentials_id.length; i++) {
+      for (let i = 0; i < event.credentials.length; i++) {
         const encodedData = schemaEncoder.encodeData([
           {
             name: "credential",
-            value: event.credentials_id[i],
+            value: event.credentials[i],
             type: "bytes32",
           },
         ]);
         requests.push({
           schema: schemaUID,
           data: {
-            recipient: event.wallet_id,
+            recipient: event.wallet_address,
             expirationTime: 0,
             revocable: true,
             data: encodedData,
@@ -37,12 +37,33 @@ exports.handler = async (event) => {
       }
 
       const tx = await eas.multiAttest(requests);
-      const newAttestationsUID = await tx.wait();
+      const uids = await tx.wait();
 
       return {
         statusCode: 200,
         body: {
-          newAttestationsUID,
+          uids,
+        },
+      };
+    } else if (event.action === "destroy_attestations") {
+      const requests = [];
+
+      for (let i = 0; i < event.uids.length; i++) {
+        requests.push({
+          schema: schemaUID,
+          data: {
+            uid: event.uids[i],
+          },
+        });
+      }
+
+      const tx = await eas.multiRevoke(event.attestations_id);
+      const revokedAttestations = await tx.wait();
+
+      return {
+        statusCode: 200,
+        body: {
+          revokedAttestations,
         },
       };
     } else {
