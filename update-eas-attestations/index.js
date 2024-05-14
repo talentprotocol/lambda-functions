@@ -39,11 +39,21 @@ exports.handler = async (event) => {
       const tx = await eas.multiAttest(requests);
       const uids = await tx.wait();
 
+      const promises = uids.map(async (uid) => {
+        const { data } = await eas.getAttestation(uid);
+        const decodedData = schemaEncoder.decodeData(data);
+
+        return {
+          uid: uid,
+          credential: decodedData[0].value,
+        };
+      });
+
+      const result = await Promise.all(promises);
+
       return {
         statusCode: 200,
-        body: {
-          uids,
-        },
+        body: result,
       };
     } else if (event.action === "destroy_attestations") {
       const requests = [];
@@ -53,18 +63,17 @@ exports.handler = async (event) => {
           schema: schemaUID,
           data: {
             uid: event.uids[i],
+            value: 0,
           },
         });
       }
 
-      const tx = await eas.multiRevoke(event.attestations_id);
-      const revokedAttestations = await tx.wait();
+      const tx = await eas.multiRevoke(requests);
+      await tx.wait();
 
       return {
         statusCode: 200,
-        body: {
-          revokedAttestations,
-        },
+        body: {},
       };
     } else {
       return {
