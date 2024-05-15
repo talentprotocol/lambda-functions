@@ -1,18 +1,24 @@
-import { EAS, SchemaEncoder } from "@ethereum-attestation-service/eas-sdk";
-import { Wallet } from "ethers";
+const { EAS, SchemaEncoder } = require("@ethereum-attestation-service/eas-sdk");
+const { Wallet, JsonRpcProvider } = require("ethers");
 
 const WALLET_PK = process.env.WALLET_PK;
+const SCHEMA_UID = process.env.SCHEMA_UID;
+const JSON_RPC_URL = process.env.JSON_RPC_URL;
 const easContractAddress = "0x4200000000000000000000000000000000000021";
-const schemaUID =
-  "0x44bc7bd80aa45fcc8e4ff4bdf42fe4f0fbc450360df8d7df9f307203642a5ca9";
 
 exports.handler = async (event) => {
   try {
-    const signer = new Wallet(WALLET_PK);
+    const signer = new Wallet(WALLET_PK, new JsonRpcProvider(JSON_RPC_URL));
     const eas = new EAS(easContractAddress);
     // Signer must be an ethers-like signer.
     eas.connect(signer);
     if (event.action === "create_attestations") {
+      if (event.wallet_address === undefined) {
+        return {
+          statusCode: 400,
+          body: { errorId: 1, error: "No wallet id provided" },
+        };
+      }
       // Initialize SchemaEncoder with the schema string
       const schemaEncoder = new SchemaEncoder("bytes32 credential");
       const requests = [];
@@ -26,13 +32,15 @@ exports.handler = async (event) => {
           },
         ]);
         requests.push({
-          schema: schemaUID,
-          data: {
-            recipient: event.wallet_address,
-            expirationTime: 0,
-            revocable: true,
-            data: encodedData,
-          },
+          schema: SCHEMA_UID,
+          data: [
+            {
+              recipient: event.wallet_address,
+              expirationTime: 0,
+              revocable: true,
+              data: encodedData,
+            },
+          ],
         });
       }
 
@@ -60,11 +68,13 @@ exports.handler = async (event) => {
 
       for (let i = 0; i < event.uids.length; i++) {
         requests.push({
-          schema: schemaUID,
-          data: {
-            uid: event.uids[i],
-            value: 0,
-          },
+          schema: SCHEMA_UID,
+          data: [
+            {
+              uid: event.uids[i],
+              value: BigInt(0),
+            },
+          ],
         });
       }
 
@@ -78,7 +88,7 @@ exports.handler = async (event) => {
     } else {
       return {
         statusCode: 400,
-        body: { errorId: 1, error: "No wallet id provided" },
+        body: { errorId: 1, error: "invalid action" },
       };
     }
   } catch (error) {

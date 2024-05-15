@@ -11,6 +11,6 @@
   "license": "ISC",
   "dependencies": {
     "@ethereum-attestation-service/eas-sdk": "2.1.4",
-    "ethers": "5.7.2"
+    "ethers": "6.12.1"
   }
 }
