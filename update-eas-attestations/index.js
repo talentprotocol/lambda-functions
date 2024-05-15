@@ -53,7 +53,7 @@ exports.handler = async (event) => {
 
         return {
           uid: uid,
-          credential: decodedData[0].value,
+          credential: decodedData[0].value.value,
         };
       });
 
