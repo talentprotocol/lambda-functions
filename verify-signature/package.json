@@ -1,0 +1,17 @@
+{
+  "name": "create-passport",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "watch:build": "tsc --watch",
+    "compile": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "viem": "^2.13.7"
+  }
+}
