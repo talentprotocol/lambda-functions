@@ -1,0 +1,16 @@
+{
+  "name": "update-eas-attestations",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@ethereum-attestation-service/eas-sdk": "2.1.4",
+    "ethers": "6.12.1"
+  }
+}
