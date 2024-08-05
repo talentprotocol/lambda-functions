@@ -1,6 +1,5 @@
 import passportContract from "./PassportABI.json" with { type: "json" };
 
-import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createPublicClient, http, getContract } from "viem";
 import { baseSepolia, base } from "viem/chains";
 import { createSmartAccountClient } from "permissionless";
@@ -20,7 +19,7 @@ export const handler = async (event) => {
     const environment = event.environment;
     const passportId = event.passport_id;
     let chain = baseSepolia;
-    const privateKey = event.private_key;
+    const primaryWallet = event.primary_wallet;
 
     if(environment == "mainnet") {
       chain = base;
@@ -59,30 +58,6 @@ export const handler = async (event) => {
       },
     });
 
-    console.log("Generate passport wallets");
-    
-    if(!privateKey) {
-      privateKey = generatePrivateKey();
-    }
-    const eoaAccount = privateKeyToAccount(privateKey);
-
-    const eoaWallet = {
-      private_key: privateKey,
-      public_address: eoaAccount.address,
-      wallet_type: "externally_owned_account"
-    }
-
-		const generatedSmartAccount = await privateKeyToSimpleSmartAccount(publicClient, {
-			privateKey,
-			entryPoint: ENTRYPOINT, // global entrypoint
-			factoryAddress: "0x9406Cc6185a346906296840746125a0E44976454",
-		});
-
-    const scaWallet = {
-      public_address: generatedSmartAccount.address,
-      wallet_type: "smart_contract_account"
-    }
-
     console.log("Initialize Passport registry");
 
     const passportRegistry = getContract({
@@ -94,11 +69,11 @@ export const handler = async (event) => {
       },
     });
 
-    console.log(`Call admin create for generated wallet: ${generatedSmartAccount.address}`);
+    console.log(`Call admin create for wallet: ${primaryWallet}`);
 
     const txHash = await passportRegistry.write.adminCreate([
       source,
-      generatedSmartAccount.address,
+      primaryWallet,
       passportId,
     ]);
 
@@ -107,24 +82,14 @@ export const handler = async (event) => {
     );
 
     const transaction = await publicClient.waitForTransactionReceipt({
+      confirmations: 5,
       hash: txHash,
     });
-
-    const txBlockNumber = transaction.blockNumber;
-
-    const block = await publicClient.getBlock({
-      blockNumber: txBlockNumber
-    })
-
-    const blockTimestamp = block?.timestamp;
 
     const responseBody = {
       statusCode: 200,
       body: {
-        tx_hash: txHash,
-        tx_timestamp: blockTimestamp.toString(),
-        eoa_wallet: eoaWallet,
-        sca_wallet: scaWallet
+        tx_hash: transaction.hash
       }
     };
 
